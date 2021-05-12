@@ -1,0 +1,364 @@
+---
+title: "Team 8 Final Project"
+author: "Duc Nguyen & Idinma Ilodibe"
+date: "12/8/2020"
+output: html_document
+---
+
+```{r load packages, include=FALSE}
+# loading tidyverse
+library(tidyverse)
+library(broom)
+```
+
+
+```{r load datasets, include=FALSE}
+# Passwords (passwords.csv) - 2020
+passwords <- read_csv('passwords.csv')
+# Password Strength  (data.csv) - 2019 
+pw_str_class <- read_csv('data.csv')
+# Data Breaches (Data_Breaches_EN_V2_2004_2017_20180220.csv) - 2004 - 2017
+breaches <- read_csv2('Data_Breaches_EN_V2_2004_2017_20180220.csv')
+```
+
+## 1. **Framing the Problem**
+
+
+### 1.1 **Introduction**
+
+**Passwords: should we care about them?** In this analysis, we attempt to answer the question of why passwords are still a business—**cybersecurity**—concern in 2020. This is a relevant topic because cybercrime is a serious economic issue and password compromise is responsible for an alarming amount of data breaches, which is very costly to global businesses.
+
+
+### 1.2 **Research**
+
+According to a Precise Security study conducted earlier this year, weak passwords were responsible for 30% of ransomware infections in the US in 2019, making it the third leading cause of this kind of breach. The same article mentions that 23.2 million victims of ransomware used 123546 as their password, 7.8 million chose 12345678 and 3.5 million people used “password” as their password ([Ilic 2020](https://www.precisesecurity.com/articles/weak-passwords-caused-30-of-ransomware-infections-in-2019/)). The table below highlights the top ten most used passwords according to our first dataset. We can see that the top three: password”, “123456” and “12345678”, are the same ones mentioned above. Clearly, humans are very creative with passwords.  
+
+```{r top 10 passwords, echo = FALSE}
+# formatted table
+knitr::kable(
+  # showing top 10 most used passwords with only 2 columnds rank and password
+  passwords[1:10, 1:2], caption = "Top 10 Most Used Passwords" # also adding a caption
+)
+```
+
+About 80% of data breaches in 2019 happened due to password compromise and bad passwords are responsible for 42% of company cyber security breaches in 2019. In the chart below, we can see that hacking is the most common form of data breach, and 81% of hacking-related breaches are caused by compromised passwords. ([Lancaster 2020](https://www.idagent.com/blog/10-password-security-statistics-that-you-need-to-see-now/)). Data breaches are very costly for individuals, businesses and government institutions, and this cost is growing every year, particularly for businesses. The global cost of a data breach for businesses is just under $4 million, while in the US, the average cost is around $8 million ([Brook 2020](https://digitalguardian.com/blog/whats-cost-data-breach-2019#:~:text=In%20the%20U.S.%20a%20data,%2C%20%24242%2C%20is%20steeper%20too)).
+
+```{r renaming the columns for the breaches dataset, echo = FALSE}
+# loading the breaches dataset and save it as a new variable
+rnm_breaches <- breaches %>% 
+  # renaming and saving this column as a variable "method" and "records_lost"
+  rename(method = "Method of Leak", records_lost = "Records Lost")
+```
+
+```{r most used methods, echo = FALSE}
+# loading the newly renamed breaches dataset
+rnm_breaches %>% 
+  # plotting a bar chart to show the most used methods
+  ggplot(., aes(x = method)) +
+  geom_bar()
+```
+
+The ongoing health crisis has fueled online forms of economic activity  and with it, cybercrime; covid-19-related phishing has been particularly popular. Interpol reports that cyber criminals have largely shifted their focus from individuals and small businesses towards larger corporations, government agencies and critical infrastructure such as medical centers. In particular, ransomware--which is hacking into data and demanding a ransom for its safe return--has been used to target the infrastructure of institutions that are already burdened with the ongoing pandemic. 
+
+One example of this rise in cybercrime is through Zoom, a video-conferencing platform that has gained popularity with the rise of the pandemic. Hundreds of millions of people log on to zoom daily, and this platform is vulnerable to security breaches. Tom Anthony, a web security expert, recently discovered that Zoom web client meetings, even private ones, are susceptible to being hacked in a a few minutes if a hacker successfully runs all the possible number combinations of the meeting passcode. Considering that sensitive business and government meetings are being conducted over this platform, and given the very costly nature of security breaches,  this particular vulnerability should be a priority for corporations and governments worldwide ([“During the pandemic” 2020](https://www.economist.com/international/2020/08/17/during-the-pandemic-a-digital-crimewave-has-flooded-the-internet))
+
+The 2020 Verizon Data Breach Investigations Report  revealed that over 80% of data breaches involve cracking a password by guessing several character combinations or through lost/stolen identity credentials. Robust password protection, at home and in the office, is vital to protecting our information. ([Murphy 2020](https://www.ft.com/content/5cf95b77-12a4-4e34-a5c0-30904d981c58))
+
+### 1.3 **Hypothesis**
+
+The research shows that passwords are indeed a cybersecurity concern for business, especially because of the growing costs. On this basis, we also suggest that the time and ease it takes to breach a password are directly related to its characteristics e.g the strength, category, length of the password. We will perform some analysis to see whether or not our findings support these claims.
+
+
+
+## 2. **Solving the Problem**
+
+
+### 2.1 **Data Selection**
+
+1. passwords (passwords.csv) - 2020 data from [Github](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-01-14)
+
+2. pw_str_class (data.csv) - 2019 data from [Kaggle](https://www.kaggle.com/bhavikbb/password-strength-classifier-dataset)
+
+3. breaches (Data_Breaches_EN_V2_2004_2017_20180220.csv) - 2004 - 2017 data from [Kaggle](https://www.kaggle.com/estratic/data-breaches-2004-2017-en-20180218)
+
+### 2.2 **Variable Selection**
+
+We will be using three datasets in this analysis. 
+
+* The first dataset (**passwords**) contains 2020 data on the 500 most common passwords, and we will focus on the **category** & **strength**, and **time** it takes to crack passwords.
+
+* The second dataset ( **pw_str_class**) contains 2019 data on 670,000 breached passwords. We will use both of the variables in this dataset: **password** and **strength**.
+
+* The third dataset (**breaches**) contains 2004 - 2017 data on data breaches which research strongly links to weak passwords. With this dataset, we will focus on **methods** of data breaches and the different **sectors** most affected by them. 
+
+### 2.3 **Data Analysis**
+
+
+
+#### 2.3.1 **Dataset "passwords"**
+
+For this dataset, we decided to focus on the different categories of passwords to figure out the strongest, the most common password category,  and the average time it takes to crack each category offline using hacking software.
+
+In this chart,  we can see that passwords in the **name** category are the most frequently used. This means that when it comes to choosing a password, names are a go-to for many individuals, and hackers are aware of this. Clearly, the category of a password impacts how easy it is to breach it.
+
+```{r amount of passwords per category, echo = FALSE}
+# formatted table
+knitr::kable(
+# loading the passwords dataset
+passwords %>% 
+  # counting the amount of passwords for each category
+  count(category), caption = "The Amount Of Passwords Per Category" # adding a caption
+)
+```
+
+In this chart, passwords in category **nerdypop** are the strongest. This finding supports our claim that characteristics like category have an impact on how easy it is to crack a password. The more unique the category, the more difficult the password will be to breach.
+
+```{r bar chart for the strength of each category, echo = FALSE}
+# loading the passwords dataset
+passwords %>% 
+  # dropping missing values
+  drop_na() %>% 
+  # plotting a bar chart to show the strength of the password for each category
+  ggplot(., aes(x = category, y = strength, fill = category)) +
+  geom_col(position = "dodge") + 
+  scale_x_discrete(guide = guide_axis(n.dodge=3))
+```
+
+**Outliers**
+
+We plotted a boxplot to identify which category of passwords has the most **outliers**. Because stronger passwords are more unique, outliers are actually good in this particular analysis. **Nerdypop** is the category with the most outliers, which confirms the finding above that it is the strongest category.
+
+```{r box plot for outliers, echo = FALSE}
+# loading the passwords dataset
+passwords %>% 
+  # dropping missing values
+  drop_na() %>% 
+  # plotting a box plot to identify outliers for each category
+  ggplot(., aes(x = strength, fill = category)) +
+  geom_boxplot() +
+  facet_wrap(~category) # split the plot into facets
+```
+
+In this table, we see that the average time it takes to crack each category of passwords ranges from  **0 to 2.25 seconds**. This is rather negligible, so no one category stands out as easier to breach than the other. Unfortunately, this chart does not help our analysis.
+
+```{r average time to crack offline, echo = FALSE, message = FALSE}
+# formatted table
+knitr::kable(
+# loading the passwords dataset
+passwords %>% 
+  # grouping the dataset by category
+  group_by(category) %>% 
+  # finding the average time to crack the password offline
+  summarise(mean(offline_crack_sec)), caption = "Average Time To Crack The Passwords Offline" # adding a caption
+)
+```
+
+This chart shows that the distribution of password strength is skewed to the **right**. This means that the majority of the passwords in this dataset are weak, and consequently, very easy to breach.. This makes sense considering that this dataset contains the top 500 passwords. 
+
+
+```{r, echo = FALSE}
+# loading the passwords dataset
+passwords %>% 
+  #dropping missing values
+  drop_na() %>% 
+  # plotting a distribution of the strength variable
+  ggplot(., aes(x = strength)) +
+  geom_density()
+```
+
+#### 2.3.2 **Dataset "pw_str_class"**
+
+This dataset has just 2 variables (password and strength), but 670,000 observations. We can see that from these 670,000 passwords that got leaked, the majority of them, 586,503, used passwords with weak or medium strength. The strongest passwords have the smallest amount of leaks, about 83,137. This finding also confirms the hypothesis that the difficulty of breaching a password is highly related to the strength of the password itself.
+
+```{r bar chart for each strength level, echo = FALSE}
+# loading the pw_str_class dataset
+pw_str_class %>% 
+  # dropping missing values
+  drop_na() %>% 
+  # plotting a bar chart to show the count of each strength level
+  ggplot(., aes(x= strength)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5) # adding a count text
+```
+
+
+#### 2.3.3 **Dataset "breaches"**
+
+In the “Framing the Problem” section above, we plotted a chart with this dataset that showed **hacking** to be the most common form of data breach. In this subsection, we are interested in seeing what sectors of the economy are most plagued with data breaches, and how they are most often breached. 
+
+The chart below reveals that four sectors: web, government, healthcare, and financial are the categories with the highest number of data breaches. This finding is consistent with current research from IBM and the Ponemon Institute’s annual “[Cost of a Data Breach](https://www.ibm.com/security/data-breach)” report. This report lists the health and financial industries as the most susceptible to cyberattacks. The health sector in particular has the highest average cost per data breach. 
+
+
+```{r bar chart for each sectors, echo = FALSE}
+# loading breaches dataset
+rnm_breaches %>%
+  # plotting a bar chart to show each sector
+  ggplot(., aes(y = Sector, fill = Sector)) +
+  geom_bar()
+```
+
+When we plot the method of data breach by sector for the **four** sectors identified above, **hacking** is still the most common form across nearly all sectors. We know that bad passwords are responsible for 81% of hacking-related breaches, so considering how costly data breaches are, these sectors need to treat password security as a business priority. 
+
+```{r bar chart comparing top 4 sectors, echo = FALSE, warning = FALSE}
+# loading breaches dataset
+rnm_breaches %>% 
+  # highlighting the top 4 sectors
+  filter(., Sector == c("Web", "Government", "Healthcare", "Financial")) %>%
+  # plotting a bar chart for these 4 sectors and the methods that have been used
+  ggplot(., aes(x= Sector, fill = method)) +
+  geom_bar(position = "dodge")
+```
+
+
+### 2.4 **Visualization Summary**
+
+After summarization and visualization, our analysis supports the claims that weak passwords are a growing and costly cybersecurity concern for businesses, and that the ease of breaching a password is correlated to characteristics like strength and category.  Individuals, small businesses, big businesses and governments are all susceptible to being hacked. The importance of a strong password is often overlooked but its benefits are immense. Even though complex passwords are easy to forget, having this extra security measure is worth the hassle to protect our privacy.
+
+
+## 3. **Modelling and Communication**
+
+
+### 3.1 **Modelling**
+
+In this section, we will run three regressions to identify connections in our data and determine whether any predictions can be made based on the results.. The first is a multiple regression of the number of records lost as a function of year and method of hacking. 
+
+
+The second and third regressions are related to each other, so we will compare them to each other. They are both simple regressions with strength as the independent variable, and the dependent variables are the time it takes to crack a password offline and the time it takes to crack it online respectively. 
+
+
+### 3.2 **Results Presentation**
+
+
+#### 3.2.1 **Regression #1**
+
+Before running this regression, we converted the “method” of hacking variable into a dummy variable called **method_bin** since it is categorical. We did this by assigning “hacked” as “1” and the other methods as “0”, since hacking is the most relevant method of data breach in this analysis. Taking a significance level of 0.05, the p-value for the method of hacking (0.07) is not significant. However, the p-value for year (0.0007) is less than 0.05 and therefore we can reject the null hypothesis that the impact of data breaches, in terms of records lost, has been stable or declining over the past decade . The coefficient for year tells us that **for every additional year between 2004 to 2017, the number of records lost as a result of  data breach went up by approximately 9,361,000.**
+
+
+```{r creating a dummy variable for "method", echo = FALSE}
+  # creating a dummy variable "method_bin" where if the method was "Hacked" then it's 1 else it's 0
+  method_bin = ifelse(rnm_breaches$method == "Hacked", 1, 0)
+  # Combining the dummy variable to the data frame itself
+  rnm_breaches <- data.frame(rnm_breaches, method_bin)
+```
+
+
+```{r linear model for records lost as a function of year and methods, echo = FALSE}
+# formatted table
+knitr::kable(
+# loading breaches dataset
+rnm_breaches %>% 
+  # linear model
+  lm(formula = records_lost ~ Year + method_bin) %>% 
+  # tidy the data for the formatted table
+  broom::tidy()
+)
+```
+
+
+#### 3.2.2 **Regression #2**
+
+In this regression of the time it takes to crack a password **offline** as a function of  strength, the p-value is very low, so we can also reject the null hypothesis that there is no relationship between the characteristics of a password and the time it takes to breach it offline. The coefficient for strength tells us that **it takes an additional 0.23 seconds to crack a password offline for every additional measure of strength.* Although there is some relationship between these two variables, 0.23 seconds is not a lot of time, especially with regards to hacking a password.
+
+
+```{r linear model for offline time to crack as a function of strength, echo = FALSE}
+# formatted table
+knitr::kable(
+# loading the passwords dataset
+passwords %>% 
+  # linear mode
+  lm(formula = offline_crack_sec ~ strength) %>% 
+  # tidy the data for the formatted table
+  broom::tidy()
+)
+```
+
+
+
+#### 3.2.3 **Regression #3**
+
+
+In the password dataset,  the variable for the time it takes to crack a password online is given in several units, from seconds to days to years. We converted all the values in this variable to **days** for uniformity before running the regression. 
+
+
+This simple regression of the time it takes to crack a password **online** as a function of strength is very similar to the one above, so we will compare both. Like the regression for offline time, the  p-value in this regression is also very low, so we reject the null that there is no relationship between the characteristics of a password and the time it takes to breach it online. There is one key difference with this regression, which is that the coefficient for strength is significantly higher, at 261.27. This means that for every additional measure of strength for a password, the time it takes to crack it increases by 261.27 days. Compared to the 0.23 seconds in the previous regression, 261.27 days indicates a stronger relationship between the strength of a password and the time it takes to crack it online. 
+
+
+```{r conversion of online time to crack values to "days", echo = FALSE}
+# converting the values of online guessing time to crack to "days"
+online_days <- ifelse(passwords$time_unit == "days", passwords$value * 1, # days to days
+                      ifelse(passwords$time_unit == "hours", passwords$value * 0.0416667, # hours to days
+                             ifelse(passwords$time_unit == "minutes", passwords$value * 0.000694444, # minutes to days
+                                    ifelse(passwords$time_unit == "months", passwords$value * 30, # months to days
+                                           ifelse(passwords$time_unit == "seconds", passwords$value * 1.1574e-5, # seconds to days
+                                                  ifelse(passwords$time_unit == "weeks", passwords$value * 7, # weeks to days
+                                                         ifelse(passwords$time_unit == "years", passwords$value * 365, 0))))))) # years to days
+
+# combining the the new variable for the conversion to the passwords dataset
+passwords <- data.frame(passwords, online_days)
+```
+
+
+```{r linear model for online time to crack as a function of strength, echo = FALSE}
+# formatted table
+knitr::kable(
+# loading the passwords dataset
+passwords %>% 
+  # linear model
+  lm(formula = online_days ~ strength) %>% 
+  # tidy the data for the formatted table
+  broom::tidy()
+)
+```
+
+
+## 4. **Summary: Data Analysis Insights**
+
+
+The results of our visualizations and regressions support our hypotheses that:
+
+1. there is a positive relationship between the characteristics of a password (such as strength and uniqueness)  and the difficulty in breaching it
+2. the impact of data breaches has increased over the past 10 years
+3. certain industries, such as healthcare are affected by data breaches more than others
+  
+
+**Data breaches are a big cybersecurity--and cost-- concern for businesses**, and increasingly so each year. Hacking passwords is the most common form of data breach; consequently, **password security should be a top priority for every organization.**  Based on our findings in this analysis, as well as external research, we can recommend insights on the issue of passwords as a cybersecurity issue. These recommendations are split into three categories:  
+
+1. **Understand Best Practices for Password Security**: From the analysis and research, we have seen that stronger and more unique passwords are the most difficult to breach. The strongest passwords are typically longer and more unique. Thus, companies should encourage employees to use long (8 characters or more) and distinctive (i.e. uncommon) passwords. Some additional best practices for password security include: 
+
+    * Avoid reusing passwords for multiple accounts
+    * Visit a website like https://haveibeenpwned.com/Passwords before picking a password to determine whether that password has already been exposed in a breach
+    * Use two-factor authentication (2FA) or multi-factor authentication (MFA) across all areas of the organization
+    * Avoid changing passwords periodically unless you suspect that they have been exposed ([Colby, Profis 2020](https://www.cnet.com/how-to/9-rules-for-strong-passwords-how-to-create-and-remember-your-login-credentials/))
+
+
+2. **Navigate the broader (and ever-changing) cybersecurity landscape:** Cyberattacks are becoming more frequent, costly, and sophisticated each year. With the ongoing pandemic, and consequent rise in online activity, the rates of cyberattacks have increased dramatically this year in particular. Companies need to take measures to keep up with the changing cybersecurity landscape.  Some suggestions for how to do this are:
+
+    * Hire a Chief Information Security Officer (or an expert who can oversee cybersecurity for the company and stay on top of the latest scams). 
+    * Provide regular security awareness training/education for employees.
+    * Review and update company incident response plans.
+    * Use password-protection for videoconferences.
+    * Invest in a good cyber-insurance policy ([Sharton 2020](https://hbr.org/2020/05/how-organizations-can-ramp-up-their-cybersecurity-efforts-right-now))
+
+
+3. **Research Industry-specific Insights**: Having your password hacked is something that can happen to any individual or organization, but the impact varies depending on different factors. When it comes to businesses, some industries are more susceptible than others, and it is also costlier for some companies than others. From our analysis, we know that companies in the Web, Government, Healthcare and Financial sectors suffer the greatest impact of data breaches. For example, a data breach within the healthcare industry costs businesses $6.45 million, while the average cost for a data breach in Retail is &1.84 million (Brook 2020). Companies in more vulnerable sectors need to be even more alert and proactive about cybersecurity measures. 
+
+
+It is impossible to talk about passwords without broaching the broader topic of cybersecurity, which is why this analysis places both issues side-by-side. We started with the question: **Passwords: should we care about them?** Through this analysis, we have seen not only why passwords are an important topic, but also how businesses can improve their efforts surrounding password security, and the broader cybersecurity landscape.  
+
+
+
+## 5. **Sources**
+
+1. https://www.precisesecurity.com/articles/weak-passwords-caused-30-of-ransomware-infections-in-2019/
+
+2. https://www.idagent.com/blog/10-password-security-statistics-that-you-need-to-see-now/
+
+3. https://digitalguardian.com/blog/whats-cost-data-breach-2019
+
+4. https://www.economist.com/international/2020/08/17/during-the-pandemic-a-digital-crimewave-has-flooded-the-internet
+
+5. https://www.ft.com/content/5cf95b77-12a4-4e34-a5c0-30904d981c58
+
+6. https://www.cnet.com/how-to/9-rules-for-strong-passwords-how-to-create-and-remember-your-login-credentials/
+
+7. https://hbr.org/2020/05/how-organizations-can-ramp-up-their-cybersecurity-efforts-right-now
